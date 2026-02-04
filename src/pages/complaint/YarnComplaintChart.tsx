@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef, useCallback } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback, type Dispatch, type SetStateAction } from "react";
 import { API_BASE_URL } from "../../config";
 import html2canvas from "html2canvas";
 import {
@@ -85,6 +85,7 @@ interface DispatchStats {
   month: Record<string, number>;
   year: Record<string, number>;
   total: number;
+  [key: string]: any;
 }
 
 const WrappedTick = (props: any) => {
@@ -125,7 +126,23 @@ const WrappedTick = (props: any) => {
   );
 };
 
-export default function YarnComplaintChart() {
+interface YarnComplaintChartProps {
+  selectedFilters: Record<string, string[]>;
+  setSelectedFilters: Dispatch<SetStateAction<Record<string, string[]>>>;
+  startDate: string;
+  setStartDate: Dispatch<SetStateAction<string>>;
+  endDate: string;
+  setEndDate: Dispatch<SetStateAction<string>>;
+}
+
+export default function YarnComplaintChart({
+  selectedFilters,
+  setSelectedFilters,
+  startDate,
+  setStartDate,
+  endDate,
+  setEndDate
+}: YarnComplaintChartProps) {
   const [data, setData] = useState<YarnComplaint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -141,7 +158,6 @@ export default function YarnComplaintChart() {
   });
 
   // Global filters (dropdowns)
-  const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({});
   const [selectedYear, setSelectedYear] = useState<string>("");
 
   // Filter UI State
@@ -265,7 +281,7 @@ export default function YarnComplaintChart() {
     const y = new Set<string>();
     data.forEach(item => {
       if (item.query_received_date) {
-        const date = new Date(item.query_received_date);
+        const date = new Date(item.query_received_date as any);
         if (!isNaN(date.getTime())) y.add(date.getFullYear().toString());
       }
     });
@@ -359,7 +375,7 @@ export default function YarnComplaintChart() {
     data.forEach(item => {
       // Year filter (buttons)
       if (selectedYear && item.query_received_date) {
-        const date = new Date(item.query_received_date);
+        const date = new Date(item.query_received_date as any);
         if (date.getFullYear().toString() !== selectedYear) return;
       } else if (selectedYear) return;
 
@@ -381,7 +397,7 @@ export default function YarnComplaintChart() {
 
       // Month/Year interactivity filters
       if (item.query_received_date && (activeBarFilters.month || activeBarFilters.year)) {
-        const date = new Date(item.query_received_date);
+        const date = new Date(item.query_received_date as any);
         if (!isNaN(date.getTime())) {
           if (activeBarFilters.year && date.getFullYear().toString() !== activeBarFilters.year) return;
           if (activeBarFilters.month && MONTH_NAMES[date.getMonth()] !== activeBarFilters.month) return;
@@ -398,7 +414,7 @@ export default function YarnComplaintChart() {
     return data.filter(item => {
       // Global Year Filter (Buttons)
       if (selectedYear && item.query_received_date) {
-        const date = new Date(item.query_received_date);
+        const date = new Date(item.query_received_date as any);
         if (date.getFullYear().toString() !== selectedYear) return false;
       } else if (selectedYear) return false;
 
@@ -439,7 +455,7 @@ export default function YarnComplaintChart() {
       }
       
       if (item.query_received_date && (activeBarFilters.month || activeBarFilters.year)) {
-        const date = new Date(item.query_received_date);
+        const date = new Date(item.query_received_date as any);
         if (!isNaN(date.getTime())) {
           if (activeBarFilters.year && date.getFullYear().toString() !== activeBarFilters.year) return false;
           if (activeBarFilters.month && MONTH_NAMES[date.getMonth()] !== activeBarFilters.month) return false;
@@ -525,7 +541,7 @@ export default function YarnComplaintChart() {
         custTypeData[custType] = (custTypeData[custType] || 0) + 1;
 
         if (item.query_received_date) {
-          const date = new Date(item.query_received_date);
+          const date = new Date(item.query_received_date as any);
           if (!isNaN(date.getTime())) {
             const year = date.getFullYear().toString();
             const month = MONTH_NAMES[date.getMonth()];
@@ -536,10 +552,10 @@ export default function YarnComplaintChart() {
       });
 
       const format = (obj: Record<string, number>, keyName: string) =>
-        Object.entries(obj).map(([name, count]) => ({ [keyName]: name, count }));
+        Object.entries(obj).map(([name, count]) => ({ [keyName]: name as any, count }));
 
       const natureList = format(natureData, "nature");
-      let finalNatureData;
+      let finalNatureData: any[];
       let singleNaturesList: string[] = [];
 
       if (activeBarFilters.nature === "Single Complaints") {
@@ -547,7 +563,7 @@ export default function YarnComplaintChart() {
       } else {
         const aboveOne = natureList.filter(n => n.count > 1);
         const onlyOne = natureList.filter(n => n.count === 1);
-        singleNaturesList = onlyOne.map(n => n.nature).sort((a, b) => a.localeCompare(b));
+        singleNaturesList = onlyOne.map(n => String((n as any).nature)).sort((a: any, b: any) => a.localeCompare(b));
         finalNatureData = [...aboveOne].sort((a, b) => b.count - a.count);
         if (onlyOne.length > 0) {
           finalNatureData.push({
@@ -559,7 +575,7 @@ export default function YarnComplaintChart() {
       }
 
       const customerList = format(customerData, "customer");
-      let finalCustomerData;
+      let finalCustomerData: any[];
       let singleCustomersList: string[] = [];
       let doubleCustomersList: string[] = [];
 
@@ -572,8 +588,8 @@ export default function YarnComplaintChart() {
         const onlyTwo = customerList.filter(c => c.count === 2);
         const onlyOne = customerList.filter(c => c.count === 1);
         
-        singleCustomersList = onlyOne.map(c => c.customer).sort((a, b) => a.localeCompare(b));
-        doubleCustomersList = onlyTwo.map(c => c.customer).sort((a, b) => a.localeCompare(b));
+        singleCustomersList = onlyOne.map(c => String((c as any).customer)).sort((a: any, b: any) => a.localeCompare(b));
+        doubleCustomersList = onlyTwo.map(c => String((c as any).customer)).sort((a: any, b: any) => a.localeCompare(b));
 
         finalCustomerData = [...aboveTwo].sort((a, b) => b.count - a.count);
         
@@ -604,7 +620,7 @@ export default function YarnComplaintChart() {
         nature: finalNatureData,
         customer: finalCustomerData,
         month: sortedMonthData,
-        year: format(yearData, "year").sort((a, b) => a.year.localeCompare(b.year)),
+        year: format(yearData, "year").sort((a: any, b: any) => a.year.localeCompare(b.year)),
         
         status: format(statusData, "status"),
         complaint_mode: format(modeData, "complaint_mode"),
@@ -785,7 +801,7 @@ export default function YarnComplaintChart() {
             <Tooltip 
               cursor={{ fill: '#f9fafb' }} 
               contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
-              formatter={(value: number) => {
+              formatter={(value: any) => {
                 if (calcMode === "percent" && total > 0) {
                   return [`${value} (${((value / total) * 100).toFixed(1)}%)`, "Total Complaints"];
                 }
@@ -796,7 +812,7 @@ export default function YarnComplaintChart() {
               }}
             />
             <Bar dataKey={activeDataKey} name={yAxisLabel} radius={isHorizontal ? [0, 4, 4, 0] : [4, 4, 0, 0]} className="cursor-pointer">
-              {chartDataWithValues.map((entry, index) => (
+              {chartDataWithValues.map((entry: any, index) => (
                 <Cell 
                   key={`cell-${index}`} 
                   fill={activeBarFilters[type] === entry[dataKey] ? '#dc2626' : COLORS[index % COLORS.length]} 
@@ -809,7 +825,7 @@ export default function YarnComplaintChart() {
                 fontSize={10} 
                 fill="#4b5563" 
                 offset={8} 
-                formatter={(value: number) => {
+                formatter={(value: any) => {
                   if (calcMode === "percent" && total > 0) {
                     return `${((value / total) * 100).toFixed(1)}%`;
                   }
@@ -889,11 +905,11 @@ export default function YarnComplaintChart() {
                 outerRadius={120}
                 label={({ name, value, percent, index }) => {
                   if (calcMode === "percent") {
-                    return `${name} ${(percent * 100).toFixed(0)}%`;
+                    return `${name} ${((percent || 0) * 100).toFixed(0)}%`;
                   }
                   if (calcMode === "per100mt") {
                     const item = data[index];
-                    const statsForType = dispatchStats?.[type === "unit" ? "unit" : type] || null;
+                    const statsForType = (dispatchStats as any)?.[type === "unit" ? "unit" : type] || null;
                     const totalBilled = dispatchStats?.total || 0;
                     const key = String(item[dataKey]);
                     const billedQty = statsForType ? (statsForType[key] || 0) : totalBilled;
@@ -911,7 +927,7 @@ export default function YarnComplaintChart() {
                   }
                 }}
               >
-                {data.map((entry, index) => (
+                {data.map((entry: any, index) => (
                   <Cell 
                     key={`cell-${index}`} 
                     fill={activeBarFilters[type] === entry[dataKey] ? '#dc2626' : COLORS[index % COLORS.length]} 
@@ -922,13 +938,13 @@ export default function YarnComplaintChart() {
               </Pie>
               <Tooltip 
                 contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                formatter={(value: number, name: string, props: any) => {
+                formatter={(value: any, name: any, props: any) => {
                   if (calcMode === "percent" && total > 0) {
                     return [`${value} (${((value / total) * 100).toFixed(1)}%)`, "Total Complaints"];
                   }
                   if (calcMode === "per100mt") {
                     const item = props.payload;
-                    const statsForType = dispatchStats?.[type === "unit" ? "unit" : type] || null;
+                    const statsForType = (dispatchStats as any)?.[type === "unit" ? "unit" : type] || null;
                     const totalBilled = dispatchStats?.total || 0;
                     const key = String(item[dataKey]);
                     const billedQty = statsForType ? (statsForType[key] || 0) : totalBilled;

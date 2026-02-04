@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo, type Dispatch, type SetStateAction } from "react";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -177,7 +177,23 @@ type SavedLayout = {
   layout: TableLayout;
 };
 
-export default function FabricComplaintTable() {
+interface FabricComplaintTableProps {
+  selectedFilters: Record<string, string[]>;
+  setSelectedFilters: Dispatch<SetStateAction<Record<string, string[]>>>;
+  startDate: string;
+  setStartDate: Dispatch<SetStateAction<string>>;
+  endDate: string;
+  setEndDate: Dispatch<SetStateAction<string>>;
+}
+
+export default function FabricComplaintTable({
+  selectedFilters,
+  setSelectedFilters,
+  startDate,
+  setStartDate,
+  endDate,
+  setEndDate
+}: FabricComplaintTableProps) {
   const [data, setData] = useState<FabricComplaint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -197,17 +213,6 @@ export default function FabricComplaintTable() {
   const [savedLayouts, setSavedLayouts] = useState<SavedLayout[]>([]);
 
   /* ===== Filter State ===== */
-  const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({});
-  
-  // Date range filter (Default to current month)
-  const [startDate, setStartDate] = useState<string>(() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1).toLocaleDateString('en-CA');
-  });
-  const [endDate, setEndDate] = useState<string>(() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth() + 1, 0).toLocaleDateString('en-CA');
-  });
 
   // Temporary date states for the inputs
   const [tempStartDate, setTempStartDate] = useState<string>(startDate);
@@ -229,12 +234,34 @@ export default function FabricComplaintTable() {
   };
 
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [activeFilterCol, setActiveFilterCol] = useState<string | null>(null);
+  const [filterOptions, setFilterOptions] = useState<string[]>([]);
+  const [loadingOptions, setLoadingOptions] = useState(false);
+  const [filterSearch, setFilterSearch] = useState("");
   
   /* ===== Edit/Delete State ===== */
   const [editingRow, setEditingRow] = useState<FabricComplaint | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [dropdownOptions, setDropdownOptions] = useState<Record<string, string[]>>({});
   const [marketMappings, setMarketMappings] = useState<any[]>([]);
+
+  const fetchUniqueValues = async (col: string) => {
+    setLoadingOptions(true);
+    setActiveFilterCol(col);
+    setShowFilterDropdown(false);
+    setFilterSearch("");
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/unique-values/${TABLE_NAME}/${col}`);
+      const json = await res.json();
+      if (json.success) {
+        setFilterOptions(json.data.map(String));
+      }
+    } catch (err) {
+      console.error("Failed to fetch unique values", err);
+    } finally {
+      setLoadingOptions(false);
+    }
+  };
 
   const fetchAllDropdownOptions = useCallback(async () => {
     try {

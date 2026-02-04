@@ -184,23 +184,22 @@ export default function DispatchDashboard({
         ? current.filter(v => v !== div)
         : [...current, div];
       
-      const newFilters = { ...prev, ["division_description"]: updated };
-      if (updated.length === 0) delete newFilters["division_description"];
-      return newFilters;
+      if (updated.length === 0) {
+        const { division_description: _, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, division_description: updated };
     });
   };
 
   const toggleDistChannel = (channel: string) => {
     setSelectedFilters(prev => {
       if (channel === "All") {
-        const newFilters = { ...prev };
-        delete newFilters["distribution_channel_description"];
-        return newFilters;
+        const { distribution_channel_description: _, ...rest } = prev;
+        return rest;
       }
       
-      const updated = [channel]; // Single select dropdown behavior
-      const newFilters = { ...prev, ["distribution_channel_description"]: updated };
-      return newFilters;
+      return { ...prev, distribution_channel_description: [channel] };
     });
   };
 
@@ -522,7 +521,7 @@ export default function DispatchDashboard({
                   paddingAngle={8}
                   dataKey="value"
                   stroke="none"
-                  label={({ value, percentage }) => `${value} (${percentage}%)`}
+                  label={({ value, payload }: any) => `${value} (${payload.percentage}%)`}
                 >
                   {stats.divisionData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

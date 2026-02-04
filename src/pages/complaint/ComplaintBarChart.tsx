@@ -282,7 +282,7 @@ export default function ComplaintBarChart({
     return formattedData;
   }, [data, xAxisType]);
 
-  const handleBarClick = (dataPoint: { name: string; count: number }) => {
+  const handleBarClick = (dataPoint: any) => {
     if (!dataPoint || !dataPoint.name) return;
     
     const { name } = dataPoint;

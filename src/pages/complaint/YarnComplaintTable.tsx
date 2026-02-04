@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo, type Dispatch, type SetStateAction } from "react";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -177,7 +177,23 @@ type SavedLayout = {
   layout: TableLayout;
 };
 
-export default function YarnComplaintTable() {
+interface YarnComplaintTableProps {
+  selectedFilters: Record<string, string[]>;
+  setSelectedFilters: Dispatch<SetStateAction<Record<string, string[]>>>;
+  startDate: string;
+  setStartDate: Dispatch<SetStateAction<string>>;
+  endDate: string;
+  setEndDate: Dispatch<SetStateAction<string>>;
+}
+
+export default function YarnComplaintTable({
+  selectedFilters,
+  setSelectedFilters,
+  startDate,
+  setStartDate,
+  endDate,
+  setEndDate
+}: YarnComplaintTableProps) {
   const [data, setData] = useState<YarnComplaint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -197,17 +213,6 @@ export default function YarnComplaintTable() {
   const [savedLayouts, setSavedLayouts] = useState<SavedLayout[]>([]);
 
   /* ===== Filter State ===== */
-  const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({});
-  
-  // Date range filter (Default to current month)
-  const [startDate, setStartDate] = useState<string>(() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1).toLocaleDateString('en-CA');
-  });
-  const [endDate, setEndDate] = useState<string>(() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth() + 1, 0).toLocaleDateString('en-CA');
-  });
 
   // Temporary date states for the inputs
   const [tempStartDate, setTempStartDate] = useState<string>(startDate);

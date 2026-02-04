@@ -418,7 +418,7 @@ export default function FabricComplaintStatusCard({ selectedYear }: { selectedYe
                               }
                             }
 
-                            setEditingRow({ ...editingRow, ...updates });
+                            setEditingRow({ ...editingRow as any, ...updates });
                           }}
                           placeholder={`Select ${col.replaceAll("_", " ")}`}
                         />
@@ -429,7 +429,7 @@ export default function FabricComplaintStatusCard({ selectedYear }: { selectedYe
                             value={(editingRow[col] ?? "") as string | number}
                             onChange={(e) => {
                               const val = inputType === "number" ? parseFloat(e.target.value) : e.target.value;
-                              setEditingRow({ ...editingRow, [col]: val });
+                              setEditingRow({ ...editingRow as any, [col]: val });
                             }}
                             className={`w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all ${col === "invoice_no" ? "pr-24" : ""}`}
                           />
@@ -445,7 +445,7 @@ export default function FabricComplaintStatusCard({ selectedYear }: { selectedYe
                                   if (json.success) {
                                     const d = json.data;
                                     setEditingRow({
-                                      ...editingRow,
+                                      ...editingRow as any,
                                       customer_name: d.customer_name || d.bill_to_customer || editingRow.customer_name,
                                       bill_to_region: d.bill_to_region || editingRow.bill_to_region,
                                       market: d.market || editingRow.market,
