@@ -71,7 +71,7 @@ export default function ComplaintDashboard() {
     const fetchStats = async () => {
       try {
         setLoading(true);
-        let url = `${API_BASE_URL}/api/complaint-stats?`;
+        const url = `${API_BASE_URL}/api/complaint-stats?`;
         const params = new URLSearchParams();
         if (selectedYear) params.append("year", selectedYear);
         if (selectedMarket) params.append("market", selectedMarket);
@@ -204,17 +204,6 @@ export default function ComplaintDashboard() {
 
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <ComplaintStatusCard 
-          selectedYear={selectedYear} 
-          selectedTab={selectedTab} 
-          filters={{ market: selectedMarket, customer_type: selectedCustomerType }}
-        />
-        <IncompleteDataCard 
-          selectedYear={selectedYear} 
-          selectedTab={selectedTab} 
-          filters={{ market: selectedMarket, customer_type: selectedCustomerType }}
-        />
-        
         {/* Total Complaints Card */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:border-blue-100 transition-all group overflow-hidden relative">
           <div className="absolute -right-4 -top-4 w-24 h-24 bg-blue-50 rounded-full group-hover:scale-150 transition-transform duration-500" />
@@ -238,6 +227,12 @@ export default function ComplaintDashboard() {
           </div>
         </div>
 
+        <ComplaintStatusCard 
+          selectedYear={selectedYear} 
+          selectedTab={selectedTab} 
+          filters={{ market: selectedMarket, customer_type: selectedCustomerType }}
+        />
+
         {/* Total Customers Card */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:border-indigo-100 transition-all group overflow-hidden relative">
           <div className="absolute -right-4 -top-4 w-24 h-24 bg-indigo-50 rounded-full group-hover:scale-150 transition-transform duration-500" />
@@ -260,6 +255,12 @@ export default function ComplaintDashboard() {
             </div>
           </div>
         </div>
+
+        <IncompleteDataCard 
+          selectedYear={selectedYear} 
+          selectedTab={selectedTab} 
+          filters={{ market: selectedMarket, customer_type: selectedCustomerType }}
+        />
       </div>
       
       {/* Distribution Analysis Section */}

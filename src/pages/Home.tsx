@@ -4,13 +4,27 @@ export default function Home({
   onOpenComplaint,
   onOpenDispatch,
   onOpenResults,
+  onOpenCotton,
 }: {
   onOpenComplaint: () => void;
   onOpenDispatch: () => void;
   onOpenResults: () => void;
+  onOpenCotton: () => void;
 }) {
   return (
     <div className="flex flex-wrap gap-6">
+      {/* Cotton Details Card */}
+      <div
+        onClick={onOpenCotton}
+        className="bg-white border border-gray-200 rounded-lg shadow p-6 w-72 cursor-pointer
+                   hover:shadow-lg hover:border-red-300 transition"
+      >
+        <h3 className="text-lg font-bold text-red-700">Cotton Details & Its Mixing Analysis</h3>
+        <p className="text-sm text-gray-600 mt-2">
+          View cotton mixing, planning & distribution
+        </p>
+      </div>
+
       {/* Complaint Analysis Card */}
       <div
         onClick={onOpenComplaint}
