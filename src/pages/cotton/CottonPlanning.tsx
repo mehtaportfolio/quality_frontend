@@ -247,7 +247,7 @@ export default function CottonPlanning({ onBack }: { onBack?: () => void }) {
 
   const handleSaveRow = async (plan: CottonPlan) => {
     const rowPercents = matrix[plan.id] || {};
-    const totalPercent = Object.values(rowPercents).reduce((sum, val) => sum + Number(val || 0), 0);
+    const totalPercent = Object.values(rowPercents).reduce((sum: number, val) => sum + Number(val || 0), 0);
     
     if (Math.abs(totalPercent - 100) > 0.01 && totalPercent !== 0) {
       alert(`Total percentage for ${plan.unit} must be 100%`);
@@ -297,7 +297,7 @@ export default function CottonPlanning({ onBack }: { onBack?: () => void }) {
       // 1. Validation
       for (const plan of plans) {
         const rowPercents = matrix[plan.id] || {};
-        const totalPercent = Object.values(rowPercents).reduce((sum, val) => sum + Number(val || 0), 0);
+        const totalPercent = Object.values(rowPercents).reduce((sum: number, val) => sum + Number(val || 0), 0);
         
         if (totalPercent > 0 && Math.abs(totalPercent - 100) > 0.01) {
           alert(`Total percentage for ${plan.unit} must be 100% (currently ${totalPercent.toFixed(1)}%)`);

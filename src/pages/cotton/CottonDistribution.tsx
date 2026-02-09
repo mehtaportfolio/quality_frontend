@@ -139,7 +139,7 @@ const CottonDistribution: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       if (!lot) return;
       lotCounts[lot] = (lotCounts[lot] || 0) + 1;
     });
-    const lotAOA = [["Lot No", "No. of Bales"]];
+    const lotAOA: any[][] = [["Lot No", "No. of Bales"]];
     Object.entries(lotCounts).forEach(([lot, count]) => lotAOA.push([lot, count]));
     lotAOA.push(["Total", totalBales]);
 
@@ -396,7 +396,8 @@ const CottonDistribution: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         tableWidth: colWidth,
         theme: "grid",
         didParseCell: (data) => {
-          if (data.row.section === "body" && data.row.raw[0] === "Total") {
+          const rawRow = data.row.raw as any[];
+          if (data.row.section === "body" && rawRow[0] === "Total") {
             data.cell.styles.fontStyle = "bold";
             data.cell.styles.textColor = [0, 0, 0];
           }
