@@ -268,7 +268,7 @@ export default function FabricComplaintTable({
       const results: Record<string, string[]> = {};
       
       // Fetch market mappings first
-      const mapRes = await fetch("${API_BASE_URL}/api/master/market-mappings");
+      const mapRes = await fetch(`${API_BASE_URL}/api/master/market-mappings`);
       const mapJson = await mapRes.json();
       if (mapJson.success) {
         setMarketMappings(mapJson.data);
@@ -473,7 +473,7 @@ export default function FabricComplaintTable({
       });
 
       try {
-        const res = await fetch("${API_BASE_URL}/api/fabric-complaints/bulk", {
+        const res = await fetch(`${API_BASE_URL}/api/fabric-complaints/bulk`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(rows),
@@ -669,7 +669,7 @@ export default function FabricComplaintTable({
     }
 
     try {
-      const res = await fetch("${API_BASE_URL}/api/table-layout", {
+      const res = await fetch(`${API_BASE_URL}/api/table-layout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -738,7 +738,7 @@ export default function FabricComplaintTable({
 
     // Update updated_at in backend to mark as "last used"
     try {
-      await fetch("${API_BASE_URL}/api/table-layout", {
+      await fetch(`${API_BASE_URL}/api/table-layout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1179,7 +1179,7 @@ export default function FabricComplaintTable({
                 try {
                   const isNew = !editingRow.id;
                   const url = isNew 
-                    ? "${API_BASE_URL}/api/fabric-complaints" 
+                    ? `${API_BASE_URL}/api/fabric-complaints` 
                     : `${API_BASE_URL}/api/fabric-complaints/${editingRow.id}`;
                   const method = isNew ? "POST" : "PUT";
 
