@@ -20,7 +20,7 @@ interface ComplaintStatsResponse {
   fabric: Stats;
 }
 
-export default function ComplaintDashboard() {
+export default function ComplaintDashboard({ user }: { user: any }) {
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
   const [availableYears, setAvailableYears] = useState<string[]>([]);
   const [selectedTab, setSelectedTab] = useState<"yarn" | "fabric">("yarn");
@@ -260,6 +260,7 @@ export default function ComplaintDashboard() {
           selectedYear={selectedYear} 
           selectedTab={selectedTab} 
           filters={{ market: selectedMarket, customer_type: selectedCustomerType }}
+          user={user}
         />
       </div>
       

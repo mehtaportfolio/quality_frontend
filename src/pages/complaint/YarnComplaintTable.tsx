@@ -3,8 +3,23 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { API_BASE_URL } from "../../config";
+import { useRolePermissions, type Role } from "../../hooks/useRolePermissions";
 
 type YarnComplaint = Record<string, string | number | boolean | null>;
+
+interface YarnComplaintTableProps {
+  user: {
+    role: Role;
+    full_name: string;
+    id: string;
+  };
+  selectedFilters: Record<string, string[]>;
+  setSelectedFilters: Dispatch<SetStateAction<Record<string, string[]>>>;
+  startDate: string;
+  setStartDate: Dispatch<SetStateAction<string>>;
+  endDate: string;
+  setEndDate: Dispatch<SetStateAction<string>>;
+}
 
 const TABLE_NAME = "yarn_complaints";
 
@@ -187,6 +202,7 @@ interface YarnComplaintTableProps {
 }
 
 export default function YarnComplaintTable({
+  user,
   selectedFilters,
   setSelectedFilters,
   startDate,
@@ -194,6 +210,7 @@ export default function YarnComplaintTable({
   endDate,
   setEndDate
 }: YarnComplaintTableProps) {
+  const permissions = useRolePermissions(user.role);
   const [data, setData] = useState<YarnComplaint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -623,7 +640,7 @@ export default function YarnComplaintTable({
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this complaint?")) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/api/yarn-complaints/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/yarn-complaints/${id}?deleted_by=${encodeURIComponent(user.full_name)}`, {
         method: "DELETE",
       });
       const json = await res.json();
@@ -740,7 +757,7 @@ export default function YarnComplaintTable({
     e.stopPropagation(); // Prevent applying the layout when clicking delete
     if (!confirm("Are you sure you want to delete this layout?")) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/api/table-layout/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/table-layout/${id}?deleted_by=${encodeURIComponent(user.full_name)}`, {
         method: "DELETE",
       });
       const json = await res.json();
@@ -794,9 +811,10 @@ export default function YarnComplaintTable({
   return (
     <div className="flex flex-col h-full bg-white rounded-xl shadow-sm border border-gray-200">
       {/* ===== Toolbar ===== */}
-      <div className="flex flex-col border-b border-gray-100 bg-gray-50/50 overflow-visible">
-        <div className="flex items-center justify-between p-4">
-          <div className="flex items-center gap-2">
+      <div className="flex flex-col border-b border-gray-100 bg-gray-50/50 p-4 gap-4 overflow-visible">
+        {/* First Line: Layout Info, Column Controls, and Date Filters */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
             <div className="flex flex-col">
               {currentLayout && (
                 <span className="text-xs text-red-600 font-medium flex items-center gap-1">
@@ -806,7 +824,7 @@ export default function YarnComplaintTable({
               )}
             </div>
             
-            <div className="ml-4 flex items-center gap-2">
+            <div className="flex items-center gap-2">
               {/* Column Selector */}
               <div className="relative">
                 <button
@@ -963,63 +981,67 @@ export default function YarnComplaintTable({
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
               </button>
-
-              <div className="h-6 w-px bg-gray-200 mx-1" />
-
-              <button
-                onClick={() => {
-                  const emptyRow: YarnComplaint = {};
-                  allColumns.forEach(col => {
-                    if (col !== "actions") emptyRow[col] = "";
-                  });
-                  setEditingRow(emptyRow);
-                  setShowEditModal(true);
-                }}
-                className="px-3 py-1.5 bg-green-600 border border-green-600 rounded-md text-sm font-medium text-white hover:bg-green-700 transition-colors shadow-sm flex items-center gap-2"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-                Add Complaint
-              </button>
             </div>
           </div>
+        </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={loadLayouts}
-              className="px-3 py-1.5 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
-            >
-              Load Layout
-            </button>
+        {/* Second Line: Actions (Add Complaint, Load/Save Layout, Excel, PDF) */}
+        <div className="flex items-center gap-3 px-4 pb-4">
+          {permissions.canAdd && (
             <button
               onClick={() => {
-                setLayoutName("");
-                setShowSaveModal(true);
+                const emptyRow: YarnComplaint = {};
+                allColumns.forEach(col => {
+                  if (col !== "actions") emptyRow[col] = "";
+                });
+                setEditingRow(emptyRow);
+                setShowEditModal(true);
               }}
-              className="px-3 py-1.5 bg-red-600 border border-red-600 rounded-md text-sm font-medium text-white hover:bg-red-700 transition-colors shadow-sm"
+              className="px-3 py-1.5 bg-green-600 border border-green-600 rounded-md text-sm font-medium text-white hover:bg-green-700 transition-colors shadow-sm flex items-center gap-2"
             >
-              Save Layout
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+              Add Complaint
             </button>
+          )}
 
-            <div className="h-8 w-px bg-gray-200 mx-1" />
+          <div className="h-6 w-px bg-gray-200 mx-1" />
 
-            <button
-              onClick={handleDownloadExcel}
-              className="p-1.5 bg-white border border-gray-300 rounded-md text-green-600 hover:bg-green-50 transition-colors shadow-sm"
-              title="Download Excel"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/></svg>
-            </button>
-            <button
-              onClick={handleDownloadPDF}
-              className="p-1.5 bg-white border border-gray-300 rounded-md text-red-600 hover:bg-red-50 transition-colors shadow-sm"
-              title="Download PDF"
-            >
-              <svg className="h-5 w-5" viewBox="0 0 384 512" fill="currentColor">
-                <path d="M181.9 256.1c-5-16-4.9-46.9-2-46.9 8.4 0 7.6 36.9 2 46.9zm-1.7 47.2c-7.7 20.2-17.3 43.3-28.4 62.7 18.3-7 39-17.2 62.9-21.9-21.5-3.3-31.5-21-34.5-40.8zM86.1 428.1c0 .8 13.2-5.4 34.9-40.2-6.7 6.3-29.1 24.5-34.9 40.2zM248 160h136v328c0 13.3-10.7 24-24 24H24c-13.3 0-24-10.7-24-24V24C0 10.7 10.7 0 24 0h200v136c0 13.2 10.8 24 24 24zm-8 171.8c-20-12.2-33.3-29-42.7-53.8 4.5-18.5 11.6-46.6 6.2-64.2-4.7-29.4-42.4-26.5-47.8-6.8-5 18.3-.4 44.1 8.1 77-11.6 27.6-28.7 64.6-40.8 85.8-.1 0-.1.1-.2.1-27.1 13.9-73.6 44.5-54.5 68 5.6 6.9 16 10 21.5 10 9.2 0 14.3-3.6 23.4-13 14.8-15.3 32.5-49 46.5-74.2 24.3-11.1 55.6-21.1 82.2-22.3 22.8 28.5 53.6 57 81.3 57 18.1 0 24-11.2 24.1-18.9 0-14.7-27.4-19.4-80.1-41.5zm190.5-231.5L250.7 20.7c-4.5-4.5-10.6-7-17-7H232v128h128v-1.7c0-6.4-2.5-12.5-7-17zM350.1 393.3c-.1-12.4-11-28.4-53.1-44.5-5.2 2.7-21.8 11.4-21.8 11.4 34.1 21.4 75 43.4 74.9 33.1z"/>
-              </svg>
-            </button>
-          </div>
+          <button
+            onClick={loadLayouts}
+            className="px-3 py-1.5 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
+          >
+            Load Layout
+          </button>
+          <button
+            onClick={() => {
+              setLayoutName("");
+              setShowSaveModal(true);
+            }}
+            className="px-3 py-1.5 bg-red-600 border border-red-600 rounded-md text-sm font-medium text-white hover:bg-red-700 transition-colors shadow-sm"
+          >
+            Save Layout
+          </button>
+
+          <div className="h-6 w-px bg-gray-200 mx-1" />
+
+          <button
+            onClick={handleDownloadExcel}
+            className="p-1.5 bg-white border border-gray-300 rounded-md text-green-600 hover:bg-green-50 transition-colors shadow-sm"
+            title="Download Excel"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/></svg>
+          </button>
+          <button
+            onClick={handleDownloadPDF}
+            className="p-1.5 bg-white border border-gray-300 rounded-md text-red-600 hover:bg-red-50 transition-colors shadow-sm"
+            title="Download PDF"
+          >
+            <svg className="h-5 w-5" viewBox="0 0 384 512" fill="currentColor">
+              <path d="M181.9 256.1c-5-16-4.9-46.9-2-46.9 8.4 0 7.6 36.9 2 46.9zm-1.7 47.2c-7.7 20.2-17.3 43.3-28.4 62.7 18.3-7 39-17.2 62.9-21.9-21.5-3.3-31.5-21-34.5-40.8zM86.1 428.1c0 .8 13.2-5.4 34.9-40.2-6.7 6.3-29.1 24.5-34.9 40.2zM248 160h136v328c0 13.3-10.7 24-24 24H24c-13.3 0-24-10.7-24-24V24C0 10.7 10.7 0 24 0h200v136c0 13.2 10.8 24 24 24zm-8 171.8c-20-12.2-33.3-29-42.7-53.8 4.5-18.5 11.6-46.6 6.2-64.2-4.7-29.4-42.4-26.5-47.8-6.8-5 18.3-.4 44.1 8.1 77-11.6 27.6-28.7 64.6-40.8 85.8-.1 0-.1.1-.2.1-27.1 13.9-73.6 44.5-54.5 68 5.6 6.9 16 10 21.5 10 9.2 0 14.3-3.6 23.4-13 14.8-15.3 32.5-49 46.5-74.2 24.3-11.1 55.6-21.1 82.2-22.3 22.8 28.5 53.6 57 81.3 57 18.1 0 24-11.2 24.1-18.9 0-14.7-27.4-19.4-80.1-41.5zm190.5-231.5L250.7 20.7c-4.5-4.5-10.6-7-17-7H232v128h128v-1.7c0-6.4-2.5-12.5-7-17zM350.1 393.3c-.1-12.4-11-28.4-53.1-44.5-5.2 2.7-21.8 11.4-21.8 11.4 34.1 21.4 75 43.4 74.9 33.1z"/>
+            </svg>
+          </button>
         </div>
+
 
         {/* Active Filters Display */}
         {Object.keys(selectedFilters).length > 0 && (
@@ -1082,23 +1104,27 @@ export default function YarnComplaintTable({
                           style={{ width: columnWidths[col] || 100 }}
                           className="flex items-center gap-2 px-3 border-r border-gray-50 h-auto min-h-[40px]"
                         >
-                          <button
-                            onClick={() => {
-                              setEditingRow({ ...row });
-                              setShowEditModal(true);
-                            }}
-                            className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                            title="Edit"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-                          </button>
-                          <button
-                            onClick={() => handleDelete(String(row.id))}
-                            className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
-                            title="Delete"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                          </button>
+                          {permissions.canEdit && (
+                            <button
+                              onClick={() => {
+                                setEditingRow({ ...row });
+                                setShowEditModal(true);
+                              }}
+                              className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                              title="Edit"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                            </button>
+                          )}
+                          {permissions.canDelete && (
+                            <button
+                              onClick={() => handleDelete(String(row.id))}
+                              className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                              title="Delete"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                            </button>
+                          )}
                         </div>
                       );
                     }
@@ -1256,7 +1282,7 @@ export default function YarnComplaintTable({
                   </p>
                 </div>
                 
-                {!editingRow.id && (
+                {!editingRow.id && permissions.canUpload && (
                   <div className="flex items-center gap-2 ml-4 pl-4 border-l border-gray-200">
                     <button
                       onClick={handleDownloadTemplate}

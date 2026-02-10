@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { useRolePermissions, type Role } from "../../hooks/useRolePermissions";
 
 /* ====== CONFIG ====== */
 const excludedCols = ["LEAF", "CG", "AREA", "COUNT", "MAT", "SCI", "CSP"];
@@ -12,7 +13,17 @@ interface SectionData {
   rows: any[][];
 }
 
-const CottonDistribution: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+interface CottonDistributionProps {
+  user: {
+    role: Role;
+    full_name: string;
+    id: string;
+  };
+  onBack: () => void;
+}
+
+const CottonDistribution: React.FC<CottonDistributionProps> = ({ user, onBack }) => {
+  const permissions = useRolePermissions(user.role);
   const [rows, setRows] = useState<any[][]>([]);
   const [header, setHeader] = useState<string[]>([]);
   const [uniqueLots, setUniqueLots] = useState<string[]>([]);
@@ -449,30 +460,36 @@ const CottonDistribution: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       </div>
 
       <div className="flex flex-wrap items-center gap-4 bg-red-50 p-4 rounded-lg">
-        <input
-          type="file"
-          id="fileInput"
-          accept=".xlsx,.xls,.xlsm"
-          onChange={handleFile}
-          className="text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-red-600 file:text-white hover:file:bg-red-700"
-        />
-        <button
-          onClick={downloadTemplate}
-          className="px-4 py-2 bg-green-600 text-white text-sm font-bold rounded hover:bg-green-700 transition"
-        >
-          ⬇ Download Sample Template
-        </button>
+        {permissions.canUpload && (
+          <>
+            <input
+              type="file"
+              id="fileInput"
+              accept=".xlsx,.xls,.xlsm"
+              onChange={handleFile}
+              className="text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-red-600 file:text-white hover:file:bg-red-700"
+            />
+            <button
+              onClick={downloadTemplate}
+              className="px-4 py-2 bg-green-600 text-white text-sm font-bold rounded hover:bg-green-700 transition"
+            >
+              ⬇ Download Sample Template
+            </button>
+          </>
+        )}
         {rows.length > 0 && (
           <>
-            <button
-              onClick={() => {
-                document.getElementById("fileInput") && ((document.getElementById("fileInput") as HTMLInputElement).value = "");
-                resetState();
-              }}
-              className="px-4 py-2 bg-orange-500 text-white text-sm font-bold rounded hover:bg-orange-600 transition"
-            >
-              Reset File
-            </button>
+            {permissions.canUpload && (
+              <button
+                onClick={() => {
+                  document.getElementById("fileInput") && ((document.getElementById("fileInput") as HTMLInputElement).value = "");
+                  resetState();
+                }}
+                className="px-4 py-2 bg-orange-500 text-white text-sm font-bold rounded hover:bg-orange-600 transition"
+              >
+                Reset File
+              </button>
+            )}
             <button
               onClick={() => {
                 setSelectedLots(new Set(uniqueLots));

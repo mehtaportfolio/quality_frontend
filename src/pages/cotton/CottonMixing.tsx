@@ -1,5 +1,6 @@
 import { useState, useEffect, Fragment } from "react";
 import * as XLSX from "xlsx";
+import { useRolePermissions } from "../../hooks/useRolePermissions";
 
 const MIXING_DASHBOARD_URL = "https://cotton-quality-dashboard.smpl-qa-manthan.workers.dev/";
 const MIXING_API_URL = "https://cotton-api-ekdn.onrender.com";
@@ -30,7 +31,13 @@ const TABLE_COLUMNS = [
   { id: "min_mic_percent", label: "Min MIC%" }
 ];
 
-export default function CottonMixing({ onBack }: { onBack: () => void }) {
+interface User {
+  role: string;
+  full_name: string;
+}
+
+export default function CottonMixing({ user, onBack }: { user: User, onBack: () => void }) {
+  const permissions = useRolePermissions(user.role as any);
   const [units, setUnits] = useState<string[]>([]);
   const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
   const [showUnitDropdown, setShowUnitDropdown] = useState(false);

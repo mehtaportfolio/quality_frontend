@@ -5,8 +5,10 @@ import DispatchChart from "./DispatchChart";
 import DispatchDashboard from "./DispatchDashboard";
 import MasterUpdateModal from "./MasterUpdateModal";
 import DataUploadModal from "./DataUploadModal";
+import { useRolePermissions } from "../../hooks/useRolePermissions";
 
-export default function Dispatch() {
+export default function Dispatch({ user }: { user: any }) {
+  const permissions = useRolePermissions(user.role);
   const [activeTab, setActiveTab] = useState<string>("Dashboard");
   const [contentType, setContentType] = useState<"table" | "chart">("table");
   const [divisions, setDivisions] = useState<string[]>([]);
@@ -187,16 +189,18 @@ export default function Dispatch() {
           <div className="pb-2 text-gray-400 italic text-sm">Loading divisions...</div>
         )}
 
-        <button
-          onClick={() => setActiveTab("Update Data")}
-          className={`pb-2 px-4 font-semibold capitalize whitespace-nowrap transition-colors ${
-            activeTab === "Update Data"
-              ? "text-red-700 border-b-2 border-red-700"
-              : "text-gray-500 hover:text-red-600"
-          }`}
-        >
-          Update Data
-        </button>
+        {permissions.canUpload && (
+          <button
+            onClick={() => setActiveTab("Update Data")}
+            className={`pb-2 px-4 font-semibold capitalize whitespace-nowrap transition-colors ${
+              activeTab === "Update Data"
+                ? "text-red-700 border-b-2 border-red-700"
+                : "text-gray-500 hover:text-red-600"
+            }`}
+          >
+            Update Data
+          </button>
+        )}
       </div>
 
       <div className="flex flex-col gap-4">
@@ -290,7 +294,7 @@ export default function Dispatch() {
             {/* Render Division Content */}
             <div className="min-h-[600px]">
               {contentType === "table" ? (
-                <DispatchTable division={activeTab} {...getFilterProps(false)} />
+                <DispatchTable user={user} division={activeTab} {...getFilterProps(false)} />
               ) : (
                 <DispatchChart division={activeTab} {...getFilterProps(true)} />
               )}

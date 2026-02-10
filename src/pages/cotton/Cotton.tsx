@@ -1,12 +1,23 @@
+import { useRolePermissions, type Role } from "../../hooks/useRolePermissions";
+
+interface User {
+  role: Role;
+  full_name: string;
+}
+
 export default function Cotton({ 
+  user,
   onOpenMixing,
   onOpenPlanning, 
   onOpenDistribution 
 }: { 
+  user: User;
   onOpenMixing: () => void;
   onOpenPlanning: () => void;
   onOpenDistribution: () => void;
 }) {
+  const permissions = useRolePermissions(user.role);
+  
   const buttons = [
     { label: "Cotton Mixing", description: "Analyze and manage cotton mixing details", action: onOpenMixing },
     { label: "Cotton Planning", description: "Plan cotton requirements and usage", action: onOpenPlanning },

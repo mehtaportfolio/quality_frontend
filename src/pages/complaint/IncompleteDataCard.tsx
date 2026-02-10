@@ -125,11 +125,13 @@ function SearchableDropdown({
 export default function IncompleteDataCard({ 
   selectedYear,
   selectedTab = "yarn",
-  filters = {}
+  filters = {},
+  user
 }: { 
   selectedYear?: string;
   selectedTab?: "yarn" | "fabric";
   filters?: Record<string, string>;
+  user: any;
 }) {
   const [count, setCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -246,7 +248,7 @@ export default function IncompleteDataCard({
     
     try {
       const endpoint = selectedTab === "yarn" ? "yarn-complaints" : "fabric-complaints";
-      const res = await fetch(`${API_BASE_URL}/api/${endpoint}/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/${endpoint}/${id}?deleted_by=${encodeURIComponent(user.full_name)}`, {
         method: "DELETE",
       });
       const json = await res.json();

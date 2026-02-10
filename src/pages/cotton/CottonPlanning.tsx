@@ -5,6 +5,8 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 
+import { useRolePermissions, type Role } from "../../hooks/useRolePermissions";
+
 interface CottonVariety {
   id: string;
   cotton_group: string;
@@ -20,7 +22,17 @@ interface CottonPlan {
   cotton_planning_blend: any[];
 }
 
-export default function CottonPlanning({ onBack }: { onBack?: () => void }) {
+interface CottonPlanningProps {
+  user: {
+    role: Role;
+    full_name: string;
+    id: string;
+  };
+  onBack?: () => void;
+}
+
+export default function CottonPlanning({ user, onBack }: CottonPlanningProps) {
+  const permissions = useRolePermissions(user.role);
   const [plans, setPlans] = useState<CottonPlan[]>([]);
   const [varieties, setVarieties] = useState<CottonVariety[]>([]);
   const [loading, setLoading] = useState(false);
@@ -695,9 +707,10 @@ export default function CottonPlanning({ onBack }: { onBack?: () => void }) {
                             type="number"
                             value={rowPercents[v.cotton_variety] ?? ""}
                             onChange={(e) => handlePercentChange(plan.id, v.cotton_variety, e.target.value)}
+                            disabled={!permissions.canEdit}
                             className={`w-full text-center py-3 px-0.5 border-transparent focus:ring-0 outline-none transition-all text-[11px] focus:bg-gray-200 focus:text-black focus:font-bold ${
                               Number(rowPercents[v.cotton_variety]) > 0 ? 'bg-red-50 font-bold text-red-700' : 'bg-transparent text-gray-200'
-                            }`}
+                            } ${!permissions.canEdit ? 'cursor-not-allowed opacity-80' : ''}`}
                           />
                         </td>
                       ))}
@@ -707,16 +720,18 @@ export default function CottonPlanning({ onBack }: { onBack?: () => void }) {
               </tbody>
             </table>
           </div>
-          <div className="p-4 bg-gray-50 border-t border-black flex justify-center">
-            <button 
-              onClick={handleSaveAll}
-              disabled={loading}
-              className="bg-red-700 text-white px-12 py-2.5 rounded-xl font-bold text-sm hover:bg-red-800 shadow-md flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><path d="M7 3v5h8"/></svg>
-              {loading ? 'Saving Changes...' : 'Save All Planning Data'}
-            </button>
-          </div>
+          {permissions.canEdit && (
+            <div className="p-4 bg-gray-50 border-t border-black flex justify-center">
+              <button 
+                onClick={handleSaveAll}
+                disabled={loading}
+                className="bg-red-700 text-white px-12 py-2.5 rounded-xl font-bold text-sm hover:bg-red-800 shadow-md flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><path d="M7 3v5h8"/></svg>
+                {loading ? 'Saving Changes...' : 'Save All Planning Data'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -731,9 +746,11 @@ export default function CottonPlanning({ onBack }: { onBack?: () => void }) {
               </span>
               <span className="text-[10px] font-bold uppercase text-gray-600">Unit wise Bale Consumption</span>
             </div>
-            <button onClick={(e) => { e.stopPropagation(); handleAddPlan(); }} className="text-red-700">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-            </button>
+            {permissions.canAdd && (
+              <button onClick={(e) => { e.stopPropagation(); handleAddPlan(); }} className="text-red-700">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+              </button>
+            )}
           </div>
           {showUnitsTable && (
             <table className="w-full text-[10px]">
@@ -747,8 +764,12 @@ export default function CottonPlanning({ onBack }: { onBack?: () => void }) {
                     <td className="px-1 py-1.5 text-center">{p.laydown_consumption}</td>
                     <td className="px-1 py-1.5 text-center">{p.no_of_bales_per_laydown}</td>
                     <td className="px-2 py-1.5 text-right flex gap-1 justify-end">
-                      <button onClick={() => handleEditPlan(p)} className="text-blue-600"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                      <button onClick={() => handleDeletePlan(p.id)} className="text-red-600"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
+                      {permissions.canEdit && (
+                        <button onClick={() => handleEditPlan(p)} className="text-blue-600"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                      )}
+                      {permissions.canDelete && (
+                        <button onClick={() => handleDeletePlan(p.id)} className="text-red-600"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -766,9 +787,11 @@ export default function CottonPlanning({ onBack }: { onBack?: () => void }) {
               </span>
               <span className="text-[10px] font-bold uppercase text-gray-600">Variety wise Avg Bale Weight</span>
             </div>
-            <button onClick={(e) => { e.stopPropagation(); handleAddVariety(); }} className="text-red-700">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-            </button>
+            {permissions.canAdd && (
+              <button onClick={(e) => { e.stopPropagation(); handleAddVariety(); }} className="text-red-700">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+              </button>
+            )}
           </div>
           {showVarietiesTable && (
             <table className="w-full text-[10px]">
@@ -781,8 +804,12 @@ export default function CottonPlanning({ onBack }: { onBack?: () => void }) {
                     <td className="px-2 py-1.5 font-medium">{v.cotton_variety}<span className="text-[8px] text-gray-400 block">{v.cotton_group}</span></td>
                     <td className="px-2 py-1.5 text-center">{v.avg_bale_weight}</td>
                     <td className="px-2 py-1.5 text-right flex gap-1 justify-end">
-                      <button onClick={() => handleEditVariety(v)} className="text-blue-600"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                      <button onClick={() => handleDeleteVariety(v.id)} className="text-red-600"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
+                      {permissions.canEdit && (
+                        <button onClick={() => handleEditVariety(v)} className="text-blue-600"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                      )}
+                      {permissions.canDelete && (
+                        <button onClick={() => handleDeleteVariety(v.id)} className="text-red-600"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
+                      )}
                     </td>
                   </tr>
                 ))}

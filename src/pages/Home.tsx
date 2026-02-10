@@ -1,16 +1,26 @@
 
 
+import { useRolePermissions, type Role } from "../hooks/useRolePermissions";
+
+interface User {
+  role: Role;
+  full_name: string;
+}
+
 export default function Home({
+  user,
   onOpenComplaint,
   onOpenDispatch,
   onOpenResults,
   onOpenCotton,
 }: {
+  user: User;
   onOpenComplaint: () => void;
   onOpenDispatch: () => void;
   onOpenResults: () => void;
   onOpenCotton: () => void;
 }) {
+  const permissions = useRolePermissions(user.role);
   return (
     <div className="flex flex-wrap gap-6">
       {/* Cotton Details Card */}

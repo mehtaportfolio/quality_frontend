@@ -2,7 +2,7 @@ import { useState } from "react";
 import YarnComplaintTable from "./YarnComplaintTable";
 import YarnComplaintChart from "./YarnComplaintChart";
 
-export default function YarnComplaint() {
+export default function YarnComplaint({ user }: { user: any }) {
   const [activeSubTab, setActiveSubTab] = useState<"table" | "chart">("table");
 
   /* ===== Shared Filter State ===== */
@@ -63,7 +63,7 @@ export default function YarnComplaint() {
 
       {/* Content Card */}
       <div className="border rounded-lg shadow p-4 bg-white">
-        {activeSubTab === "table" && <YarnComplaintTable {...filterProps} />}
+        {activeSubTab === "table" && <YarnComplaintTable user={user} {...filterProps} />}
         {activeSubTab === "chart" && <YarnComplaintChart {...filterProps} />}
       </div>
     </div>

@@ -4,7 +4,7 @@ import FabricComplaint from "./FabricComplaint";
 import ComplaintDashboard from "./ComplaintDashboard";
 import { API_BASE_URL } from "../../config";
 
-export default function Complaint() {
+export default function Complaint({ user }: { user: any }) {
   const [subTab, setSubTab] = useState<"dashboard" | "yarn" | "fabric">(
     "dashboard"
   );
@@ -71,9 +71,9 @@ export default function Complaint() {
       </div>
 
       {/* Sub Tab Content */}
-      {subTab === "yarn" && <YarnComplaint />}
-      {subTab === "fabric" && <FabricComplaint />}
-      {subTab === "dashboard" && <ComplaintDashboard />}
+      {subTab === "yarn" && <YarnComplaint user={user} />}
+      {subTab === "fabric" && <FabricComplaint user={user} />}
+      {subTab === "dashboard" && <ComplaintDashboard user={user} />}
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { useState } from "react";
 import FabricComplaintTable from "./FabricComplaintTable";
 import FabricComplaintChart from "./FabricComplaintChart";
 
-export default function FabricComplaint() {
+export default function FabricComplaint({ user }: { user: any }) {
   const [activeSubTab, setActiveSubTab] = useState<"table" | "chart">("table");
 
   /* ===== Shared Filter State ===== */
@@ -63,7 +63,7 @@ export default function FabricComplaint() {
 
       {/* Content Card */}
       <div className="border rounded-lg shadow p-4 bg-white">
-        {activeSubTab === "table" && <FabricComplaintTable {...filterProps} />}
+        {activeSubTab === "table" && <FabricComplaintTable user={user} {...filterProps} />}
         {activeSubTab === "chart" && <FabricComplaintChart {...filterProps} />}
       </div>
     </div>

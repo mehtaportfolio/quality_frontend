@@ -7,11 +7,14 @@ import Cotton from "./pages/cotton/Cotton";
 import CottonMixing from "./pages/cotton/CottonMixing";
 import CottonPlanning from "./pages/cotton/CottonPlanning";
 import CottonDistribution from "./pages/cotton/CottonDistribution";
+import Users from "./pages/Users";
+import Login from "./components/Login";
 import { API_BASE_URL } from "./config";
 
 function App() {
+  const [user, setUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<
-    "home" | "complaint" | "dispatch" | "dispatch-results" | "cotton" | "cotton-mixing" | "cotton-planning" | "cotton-distribution"
+    "home" | "complaint" | "dispatch" | "dispatch-results" | "cotton" | "cotton-mixing" | "cotton-planning" | "cotton-distribution" | "users"
   >("home");
   const [showComplaintTab, setShowComplaintTab] = useState(false);
   const [showDispatchTab, setShowDispatchTab] = useState(false);
@@ -22,6 +25,23 @@ function App() {
   const [showCottonDistributionTab, setShowCottonDistributionTab] = useState(false);
   const [restarting, setRestarting] = useState(false);
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem("quality_app_user");
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
+  }, []);
+
+  const handleLoginSuccess = (loggedInUser: any) => {
+    setUser(loggedInUser);
+    localStorage.setItem("quality_app_user", JSON.stringify(loggedInUser));
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem("quality_app_user");
+  };
 
   const handleRestartBackend = async (isAuto = false) => {
     try {
@@ -51,6 +71,10 @@ function App() {
     }
   }, []);
 
+  if (!user) {
+    return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
+
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
@@ -58,11 +82,26 @@ function App() {
         <h1 className="text-center text-3xl font-bold text-red-700">
           Quality Dashboard
         </h1>
-        {activeTab === "home" && (
+        <div className="absolute right-6 top-1/2 -translate-y-1/2 flex items-center space-x-4">
+          <div className="text-right hidden sm:block">
+            <p className="text-sm font-bold text-gray-800">{user.full_name}</p>
+            <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors"
+            title="Logout"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+          </button>
           <button
             onClick={() => handleRestartBackend(false)}
             disabled={restarting}
-            className={`absolute right-6 top-1/2 -translate-y-1/2 p-2 rounded-full border border-red-100 transition-all duration-300 ${
+            className={`p-2 rounded-full border border-red-100 transition-all duration-300 ${
               restarting 
                 ? "bg-gray-100 text-gray-400 cursor-not-allowed" 
                 : "bg-white text-red-600 hover:bg-red-50 hover:border-red-200 hover:shadow-sm shadow-xs"
@@ -85,7 +124,7 @@ function App() {
               <path d="M21 3v5h-5"/>
             </svg>
           </button>
-        )}
+        </div>
       </header>
 
       {/* Main Layout */}
@@ -133,6 +172,16 @@ function App() {
                 setShowCottonDistributionTab(false);
               }}
             />
+            {user.role === "Admin" && (
+              <SidebarButton
+                label="Users"
+                active={activeTab === "users"}
+                onClick={() => {
+                  setActiveTab("users");
+                  setIsSidebarVisible(false);
+                }}
+              />
+            )}
             {showCottonTab && (
               <SidebarButton
                 label="Cotton Details"
@@ -210,6 +259,7 @@ function App() {
         <main className="flex-1 p-6 border-l-4 border-red-600 bg-white overflow-auto">
           {activeTab === "home" && (
             <Home
+              user={user}
               onOpenCotton={() => {
                 setShowCottonTab(true);
                 setActiveTab("cotton");
@@ -235,6 +285,7 @@ function App() {
 
           {activeTab === "cotton" && (
             <Cotton
+              user={user}
               onOpenMixing={() => {
                 setShowCottonMixingTab(true);
                 setActiveTab("cotton-mixing");
@@ -253,17 +304,18 @@ function App() {
             />
           )}
           {activeTab === "cotton-mixing" && (
-            <CottonMixing onBack={() => setActiveTab("cotton")} />
+            <CottonMixing user={user} onBack={() => setActiveTab("cotton")} />
           )}
           {activeTab === "cotton-planning" && (
-            <CottonPlanning onBack={() => setActiveTab("cotton")} />
+            <CottonPlanning user={user} onBack={() => setActiveTab("cotton")} />
           )}
           {activeTab === "cotton-distribution" && (
-            <CottonDistribution onBack={() => setActiveTab("cotton")} />
+            <CottonDistribution user={user} onBack={() => setActiveTab("cotton")} />
           )}
-          {activeTab === "complaint" && <Complaint />}
-          {activeTab === "dispatch" && <Dispatch />}
-          {activeTab === "dispatch-results" && <DispatchResults />}
+          {activeTab === "complaint" && <Complaint user={user} />}
+          {activeTab === "dispatch" && <Dispatch user={user} />}
+          {activeTab === "dispatch-results" && <DispatchResults user={user} />}
+          {activeTab === "users" && <Users user={user} />}
         </main>
       </div>
     </div>

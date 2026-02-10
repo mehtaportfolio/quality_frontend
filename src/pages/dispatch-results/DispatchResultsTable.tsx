@@ -3,6 +3,7 @@ import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { API_BASE_URL } from "../../config";
+import { useRolePermissions, type Role } from "../../hooks/useRolePermissions";
 
 interface DispatchResult {
   id: string;
@@ -28,6 +29,14 @@ interface DispatchResult {
   spandex: string;
   created_at: string;
   billing_date: string | null;
+}
+
+interface DispatchResultsTableProps {
+  user: {
+    role: Role;
+    full_name: string;
+    id: string;
+  };
 }
 
 const QUALITY_COLUMNS = [
@@ -719,7 +728,8 @@ function UploadModal({ onClose, onUploadSuccess }: { onClose: () => void, onUplo
   );
 }
 
-export default function DispatchResultsTable() {
+export default function DispatchResultsTable({ user }: DispatchResultsTableProps) {
+  const permissions = useRolePermissions(user.role);
   const [data, setData] = useState<DispatchResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -949,15 +959,17 @@ export default function DispatchResultsTable() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <button
-          onClick={() => setShowUploadModal(true)}
-          className="flex items-center justify-center px-4 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors shadow-sm h-12"
-          title="Upload Dispatch Results"
-        >
-          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-        </button>
+        {permissions.canUpload && (
+          <button
+            onClick={() => setShowUploadModal(true)}
+            className="flex items-center justify-center px-4 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors shadow-sm h-12"
+            title="Upload Dispatch Results"
+          >
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
+        )}
 
         <button
           onClick={() => setShowDispatchModal(true)}
