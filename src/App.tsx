@@ -26,21 +26,12 @@ function App() {
   const [restarting, setRestarting] = useState(false);
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
 
-  useEffect(() => {
-    const savedUser = localStorage.getItem("quality_app_user");
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-  }, []);
-
   const handleLoginSuccess = (loggedInUser: any) => {
     setUser(loggedInUser);
-    localStorage.setItem("quality_app_user", JSON.stringify(loggedInUser));
   };
 
   const handleLogout = () => {
     setUser(null);
-    localStorage.removeItem("quality_app_user");
   };
 
   const handleRestartBackend = async (isAuto = false) => {

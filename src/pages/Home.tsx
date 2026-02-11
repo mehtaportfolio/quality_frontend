@@ -1,6 +1,6 @@
 
 
-import { useRolePermissions, type Role } from "../hooks/useRolePermissions";
+import { type Role } from "../hooks/useRolePermissions";
 
 interface User {
   role: Role;
@@ -20,7 +20,6 @@ export default function Home({
   onOpenResults: () => void;
   onOpenCotton: () => void;
 }) {
-  const permissions = useRolePermissions(user.role);
   return (
     <div className="flex flex-wrap gap-6">
       {/* Cotton Details Card */}
@@ -68,6 +67,18 @@ export default function Home({
         <h3 className="text-lg font-bold text-red-700">Dispatch Results</h3>
         <p className="text-sm text-gray-600 mt-2">
           View quality results for dispatch
+        </p>
+      </div>
+
+      {/* Uster Quantum Daily Report Card */}
+      <div
+        onClick={() => window.open("https://uster-quantum-daily-report.smpl-qa-manthan.workers.dev/", "_blank")}
+        className="bg-white border border-gray-200 rounded-lg shadow p-6 w-72 cursor-pointer
+                   hover:shadow-lg hover:border-red-300 transition"
+      >
+        <h3 className="text-lg font-bold text-red-700">Uster Quantum Daily Report</h3>
+        <p className="text-sm text-gray-600 mt-2">
+          View Uster Quantum daily reports
         </p>
       </div>
     </div>
