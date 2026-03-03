@@ -13,12 +13,14 @@ export default function Home({
   onOpenDispatch,
   onOpenResults,
   onOpenCotton,
+  onOpenYarnRealization,
 }: {
   user: User;
   onOpenComplaint: () => void;
   onOpenDispatch: () => void;
   onOpenResults: () => void;
   onOpenCotton: () => void;
+  onOpenYarnRealization: () => void;
 }) {
   return (
     <div className="flex flex-wrap gap-6">
@@ -79,6 +81,18 @@ export default function Home({
         <h3 className="text-lg font-bold text-red-700">Uster Quantum Daily Report</h3>
         <p className="text-sm text-gray-600 mt-2">
           View Uster Quantum daily reports
+        </p>
+      </div>
+
+      {/* Yarn Realization Card */}
+      <div
+        onClick={onOpenYarnRealization}
+        className="bg-white border border-gray-200 rounded-lg shadow p-6 w-72 cursor-pointer
+                   hover:shadow-lg hover:border-red-300 transition"
+      >
+        <h3 className="text-lg font-bold text-red-700">Yarn Realization</h3>
+        <p className="text-sm text-gray-600 mt-2">
+          View latest yarn realization data
         </p>
       </div>
     </div>

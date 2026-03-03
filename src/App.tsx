@@ -7,6 +7,7 @@ import Cotton from "./pages/cotton/Cotton";
 import CottonMixing from "./pages/cotton/CottonMixing";
 import CottonPlanning from "./pages/cotton/CottonPlanning";
 import CottonDistribution from "./pages/cotton/CottonDistribution";
+import YarnRealization from "./pages/yarn-realization/YarnRealization";
 import Users from "./pages/Users";
 import Login from "./components/Login";
 import { API_BASE_URL } from "./config";
@@ -14,7 +15,7 @@ import { API_BASE_URL } from "./config";
 function App() {
   const [user, setUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<
-    "home" | "complaint" | "dispatch" | "dispatch-results" | "cotton" | "cotton-mixing" | "cotton-planning" | "cotton-distribution" | "users"
+    "home" | "complaint" | "dispatch" | "dispatch-results" | "cotton" | "cotton-mixing" | "cotton-planning" | "cotton-distribution" | "yarn-realization" | "users"
   >("home");
   const [showComplaintTab, setShowComplaintTab] = useState(false);
   const [showDispatchTab, setShowDispatchTab] = useState(false);
@@ -23,6 +24,7 @@ function App() {
   const [showCottonMixingTab, setShowCottonMixingTab] = useState(false);
   const [showCottonPlanningTab, setShowCottonPlanningTab] = useState(false);
   const [showCottonDistributionTab, setShowCottonDistributionTab] = useState(false);
+  const [showYarnRealizationTab, setShowYarnRealizationTab] = useState(false);
   const [restarting, setRestarting] = useState(false);
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
 
@@ -161,6 +163,7 @@ function App() {
                 setShowCottonMixingTab(false);
                 setShowCottonPlanningTab(false);
                 setShowCottonDistributionTab(false);
+                setShowYarnRealizationTab(false);
               }}
             />
             {user.role === "Admin" && (
@@ -243,6 +246,16 @@ function App() {
                 }}
               />
             )}
+            {showYarnRealizationTab && (
+              <SidebarButton
+                label="Yarn Realization"
+                active={activeTab === "yarn-realization"}
+                onClick={() => {
+                  setActiveTab("yarn-realization");
+                  setIsSidebarVisible(false);
+                }}
+              />
+            )}
           </div>
         </aside>
 
@@ -271,7 +284,16 @@ function App() {
                 setActiveTab("dispatch-results");
                 setIsSidebarVisible(false);
               }}
+              onOpenYarnRealization={() => {
+                setShowYarnRealizationTab(true);
+                setActiveTab("yarn-realization");
+                setIsSidebarVisible(false);
+              }}
             />
+          )}
+
+          {activeTab === "yarn-realization" && (
+            <YarnRealization user={user} />
           )}
 
           {activeTab === "cotton" && (
