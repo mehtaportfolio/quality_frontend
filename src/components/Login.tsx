@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { API_BASE_URL } from "../config";
+import { supabase } from "../supabaseClient";
 
 interface LoginProps {
   onLoginSuccess: (user: any) => void;
@@ -17,10 +17,16 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   useEffect(() => {
     const fetchNames = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/login-names`);
-        const data = await response.json();
-        if (data.success) {
-          setNames(data.names);
+        const { data, error } = await supabase
+          .from("login_details")
+          .select("full_name")
+          .order("full_name", { ascending: true });
+
+        if (error) throw error;
+
+        if (data) {
+          const uniqueNames = [...new Set(data.map((item) => item.full_name))].filter(Boolean);
+          setNames(uniqueNames as string[]);
         }
       } catch (err) {
         console.error("Failed to fetch names:", err);
@@ -45,27 +51,47 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          role,
-          full_name: fullName,
-          secret_password: secretPassword,
-        }),
-      });
+      // 1. Check credentials
+      const { data, error: fetchError } = await supabase
+        .from("login_details")
+        .select("*")
+        .eq("role", role)
+        .eq("full_name", fullName)
+        .eq("secret_password", secretPassword)
+        .single();
 
-      const data = await response.json();
-
-      if (data.success) {
-        onLoginSuccess(data.user);
-      } else {
-        setError(data.message || "Invalid login details");
+      if (fetchError || !data) {
+        setError("Invalid login details. Please check your role, name, and password.");
         setShowSecretModal(false);
         setSecretPassword("");
+        return;
       }
+
+      // 2. Perform the "delete and re-insert" logic as per backend pattern
+      // to update last_login (this is what your backend was doing)
+      const userToReinsert = {
+        role: data.role,
+        full_name: data.full_name,
+        secret_password: data.secret_password,
+        last_login: new Date().toISOString(),
+        work_details: data.work_details,
+      };
+
+      await supabase.from("login_details").delete().eq("id", data.id);
+
+      const { data: newData, error: insertError } = await supabase
+        .from("login_details")
+        .insert([userToReinsert])
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      onLoginSuccess({
+        id: newData.id,
+        full_name: newData.full_name,
+        role: newData.role,
+      });
     } catch (err) {
       setError("An error occurred during login. Please try again.");
       console.error("Login error:", err);
