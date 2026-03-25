@@ -14,6 +14,7 @@ export default function Home({
   onOpenResults,
   onOpenCotton,
   onOpenYarnRealization,
+  onOpenContainerStuffing,
 }: {
   user: User;
   onOpenComplaint: () => void;
@@ -21,9 +22,22 @@ export default function Home({
   onOpenResults: () => void;
   onOpenCotton: () => void;
   onOpenYarnRealization: () => void;
+  onOpenContainerStuffing: () => void;
 }) {
   return (
     <div className="flex flex-wrap gap-6">
+      {/* Container Stuffing Card */}
+      <div
+        onClick={onOpenContainerStuffing}
+        className="bg-white border border-gray-200 rounded-lg shadow p-6 w-72 cursor-pointer
+                   hover:shadow-lg hover:border-red-300 transition"
+      >
+        <h3 className="text-lg font-bold text-red-700">Container Stuffing</h3>
+        <p className="text-sm text-gray-600 mt-2">
+          Calculate optimal carton stuffing in containers
+        </p>
+      </div>
+
       {/* Cotton Details Card */}
       <div
         onClick={onOpenCotton}

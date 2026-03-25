@@ -8,6 +8,7 @@ import CottonMixing from "./pages/cotton/CottonMixing";
 import CottonPlanning from "./pages/cotton/CottonPlanning";
 import CottonDistribution from "./pages/cotton/CottonDistribution";
 import YarnRealization from "./pages/yarn-realization/YarnRealization";
+import ContainerStuffing from "./pages/container-stuffing/ContainerStuffing";
 import Users from "./pages/Users";
 import Login from "./components/Login";
 import { API_BASE_URL } from "./config";
@@ -15,7 +16,7 @@ import { API_BASE_URL } from "./config";
 function App() {
   const [user, setUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<
-    "home" | "complaint" | "dispatch" | "dispatch-results" | "cotton" | "cotton-mixing" | "cotton-planning" | "cotton-distribution" | "yarn-realization" | "users"
+    "home" | "complaint" | "dispatch" | "dispatch-results" | "cotton" | "cotton-mixing" | "cotton-planning" | "cotton-distribution" | "yarn-realization" | "users" | "container-stuffing"
   >("home");
   const [showComplaintTab, setShowComplaintTab] = useState(false);
   const [showDispatchTab, setShowDispatchTab] = useState(false);
@@ -25,6 +26,7 @@ function App() {
   const [showCottonPlanningTab, setShowCottonPlanningTab] = useState(false);
   const [showCottonDistributionTab, setShowCottonDistributionTab] = useState(false);
   const [showYarnRealizationTab, setShowYarnRealizationTab] = useState(false);
+  const [showContainerStuffingTab, setShowContainerStuffingTab] = useState(false);
   const [restarting, setRestarting] = useState(false);
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
 
@@ -164,6 +166,7 @@ function App() {
                 setShowCottonPlanningTab(false);
                 setShowCottonDistributionTab(false);
                 setShowYarnRealizationTab(false);
+                setShowContainerStuffingTab(false);
               }}
             />
             {user.role === "Admin" && (
@@ -256,6 +259,16 @@ function App() {
                 }}
               />
             )}
+            {showContainerStuffingTab && (
+              <SidebarButton
+                label="Container Stuffing"
+                active={activeTab === "container-stuffing"}
+                onClick={() => {
+                  setActiveTab("container-stuffing");
+                  setIsSidebarVisible(false);
+                }}
+              />
+            )}
           </div>
         </aside>
 
@@ -289,11 +302,20 @@ function App() {
                 setActiveTab("yarn-realization");
                 setIsSidebarVisible(false);
               }}
+              onOpenContainerStuffing={() => {
+                setShowContainerStuffingTab(true);
+                setActiveTab("container-stuffing");
+                setIsSidebarVisible(false);
+              }}
             />
           )}
 
           {activeTab === "yarn-realization" && (
             <YarnRealization user={user} />
+          )}
+
+          {activeTab === "container-stuffing" && (
+            <ContainerStuffing user={user} />
           )}
 
           {activeTab === "cotton" && (
