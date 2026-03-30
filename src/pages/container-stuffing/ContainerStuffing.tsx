@@ -49,6 +49,7 @@ interface Results {
     fitW: number;
     fitH: number;
     conesPerCarton?: number;
+    layout: { rows: number; cols: number; layers: number };
   };
 }
 
