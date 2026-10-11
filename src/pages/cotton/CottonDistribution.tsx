@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import html2canvas from "html2canvas";
@@ -84,13 +85,39 @@ const CottonDistribution: React.FC<CottonDistributionProps> = ({ user, onBack })
   };
 
   const cleanNumericValue = (val: any): number | null => {
-    if (val === "" || val === null || val === undefined) return null;
+    if (val === null || val === undefined || (typeof val === "string" && val.trim() === "")) return null;
     const n = Number(val);
-    return isNaN(n) ? null : n;
+    return Number.isFinite(n) ? n : null;
   };
 
   const formatNum = (n: number) => {
     return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 4 });
+  };
+
+  const formatAverageParameterHeader = (name: string) => {
+    const aliases: Record<string, string> = {
+      MIC: "MIC",
+      MICRON: "MIC",
+      LEN: "LEN",
+      LENGTH: "LEN",
+      UNIF: "UNIF",
+      STR: "STR",
+      STRENGTH: "STR",
+      ELONG: "ELG",
+      ELG: "ELG",
+    };
+    return aliases[name.trim().toUpperCase()] || name;
+  };
+
+  const summarizeParameterValues = (values: number[]) => {
+    if (values.length === 0) return { max: null, min: null, cv: null };
+    const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+    const variance = values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length;
+    return {
+      max: Math.max(...values),
+      min: Math.min(...values),
+      cv: mean === 0 ? null : (Math.sqrt(variance) / Math.abs(mean)) * 100,
+    };
   };
 
   const averageResults = useMemo(() => {
@@ -123,14 +150,67 @@ const CottonDistribution: React.FC<CottonDistributionProps> = ({ user, onBack })
         const values = valuesByColumn.get(index) || [];
         return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
       }),
+      statistics: parameterColumns.map(({ index }) => summarizeParameterValues(valuesByColumn.get(index) || [])),
     }));
     const overall = parameterColumns.map(({ index }) => {
       const values = filtered.map((row) => cleanNumericValue(row[index])).filter((value): value is number => value !== null);
       return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
     });
+    const overallStatistics = parameterColumns.map(({ index }) => summarizeParameterValues(
+      filtered.map((row) => cleanNumericValue(row[index])).filter((value): value is number => value !== null)
+    ));
 
-    return { parameterColumns, lots, overall };
+    return { parameterColumns, lots, overall, overallStatistics };
   }, [header, rows, selectedLots, selectedSuppliers]);
+
+  const averageDisplayColumns = averageResults.parameterColumns.flatMap(({ name }, parameterIndex) => {
+    const normalizedName = name.trim().toUpperCase();
+    const isMic = normalizedName === "MIC" || normalizedName === "MICRON";
+    const isPlusB = normalizedName === "+B";
+    const columns: Array<{ parameterIndex: number; kind: "average" | "max" | "min" | "cv"; label: string; highlightAbove?: number }> = [
+      { parameterIndex, kind: "average", label: formatAverageParameterHeader(name) },
+    ];
+    if (isMic || isPlusB) {
+      const metricLabel = isMic ? "MIC" : "+B";
+      columns.push(
+        { parameterIndex, kind: "max", label: `${metricLabel} MAX` },
+        { parameterIndex, kind: "min", label: `${metricLabel} MIN` },
+        { parameterIndex, kind: "cv", label: `${metricLabel} CV%`, highlightAbove: isMic ? 4.5 : 5 },
+      );
+    }
+    return columns;
+  });
+
+  const formatAverageRow = (averages: Array<number | null>, statistics: Array<{ max: number | null; min: number | null; cv: number | null }>) =>
+    averageDisplayColumns.map(({ parameterIndex, kind }) => {
+      const value = kind === "average" ? averages[parameterIndex] : statistics[parameterIndex]?.[kind];
+      if (value === null || value === undefined) return "N/A";
+      const parameterName = averageResults.parameterColumns[parameterIndex].name.trim().toUpperCase();
+      const isMic = parameterName === "MIC" || parameterName === "MICRON";
+      const decimalPlaces = isMic && kind !== "cv" ? 2 : 1;
+      return kind === "cv" ? `${value.toFixed(decimalPlaces)}%` : value.toFixed(decimalPlaces);
+    });
+
+  const formatOverallStatisticRow = (kind: "min" | "max" | "range" | "cv") =>
+    averageDisplayColumns.map(({ parameterIndex, kind: displayKind }) => {
+      if (displayKind !== "average") return "";
+      const statistics = averageResults.overallStatistics[parameterIndex];
+      const value = kind === "range"
+        ? statistics.max !== null && statistics.min !== null ? statistics.max - statistics.min : null
+        : statistics[kind];
+      if (value === null) return "N/A";
+      const parameterName = averageResults.parameterColumns[parameterIndex].name.trim().toUpperCase();
+      const isMic = parameterName === "MIC" || parameterName === "MICRON";
+      const decimalPlaces = isMic && (kind === "min" || kind === "max") ? 2 : 1;
+      return kind === "cv" ? `${value.toFixed(decimalPlaces)}%` : value.toFixed(decimalPlaces);
+    });
+
+  const overallStatisticRows = [
+    { label: "Overall Min", kind: "min" as const },
+    { label: "Overall Max", kind: "max" as const },
+    { label: "Overall Range", kind: "range" as const },
+    { label: "Overall CV%", kind: "cv" as const },
+  ];
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -178,7 +258,7 @@ const CottonDistribution: React.FC<CottonDistributionProps> = ({ user, onBack })
   };
 
   const downloadTemplate = () => {
-    const headers = ["Supplier", "Lot No", "MICRON", "LENGTH", "UNIF", "STRENGTH", "SFI", "ELONG", "RD", "+B"];
+    const headers = ["Supplier", "Lot No", "MIC", "LEN", "UNIF", "SFI", "STR", "ELG", "RD", "+B", "TRASH"];
     const aoa = [headers];
     for (let i = 0; i < 5; i++) {
       aoa.push(new Array(headers.length).fill(""));
@@ -216,42 +296,38 @@ const CottonDistribution: React.FC<CottonDistributionProps> = ({ user, onBack })
     newSectionOrder.push("Lot vs No. of Bales");
 
     // === Criteria Summary ===
-    const sourceParameters: Record<string, string> = {
-      MIC: "MICRON",
-      UHML: "LENGTH",
-      UI: "UNIF",
-      STR: "STRENGTH",
-      SFI: "SFI",
-      RD: "RD",
-      "+B": "+B",
+    const sourceParameters: Record<string, string[]> = {
+      MIC: ["MIC", "MICRON"],
+      UHML: ["LEN", "LENGTH", "UHML"],
+      UI: ["UNIF", "UI"],
+      STR: ["STR", "STRENGTH"],
+      SFI: ["SFI"],
+      RD: ["RD"],
+      "+B": ["+B"],
     };
 
     const criteriaAOA = [["Parameter", "Criteria", "% Value"]];
     criteria.forEach((criterion) => {
-      const param = sourceParameters[criterion.parameter.toUpperCase()] || criterion.parameter;
-      const colIdx = header.findIndex((h) => String(h).trim().toUpperCase() === param.toUpperCase());
+      const parameterAliases = sourceParameters[criterion.parameter.toUpperCase()] || [criterion.parameter];
+      const colIdx = header.findIndex((h) => parameterAliases.includes(String(h).trim().toUpperCase()));
       if (colIdx !== -1) {
         const values = filtered.map((r) => cleanNumericValue(r[colIdx])).filter((v): v is number => v !== null);
-        if (values.length > 0) {
-          const threshold = Number(criterion.criteria_value);
-          const count = values.filter((v) => {
-            const value = roundTo(v, 8);
-            switch (criterion.operator) {
-              case "<": return value < threshold;
-              case "<=": return value <= threshold;
-              case ">": return value > threshold;
-              case ">=": return value >= threshold;
-              case "=": return value === threshold;
-              default: return false;
-            }
-          }).length;
-          const pct = (count / values.length) * 100;
-          criteriaAOA.push([criterion.parameter, `${criterion.operator}${formatNum(Number(criterion.criteria_value))}`, pct.toFixed(1) + "%"]);
-        } else {
-          criteriaAOA.push([criterion.parameter, `${criterion.operator}${formatNum(Number(criterion.criteria_value))}`, "0.0%"]);
-        }
-      } else {
-        criteriaAOA.push([criterion.parameter, `${criterion.operator}${formatNum(Number(criterion.criteria_value))}`, "N/A"]);
+        if (values.length === 0) return;
+
+        const threshold = Number(criterion.criteria_value);
+        const count = values.filter((v) => {
+          const value = roundTo(v, 8);
+          switch (criterion.operator) {
+            case "<": return value < threshold;
+            case "<=": return value <= threshold;
+            case ">": return value > threshold;
+            case ">=": return value >= threshold;
+            case "=": return value === threshold;
+            default: return false;
+          }
+        }).length;
+        const pct = (count / values.length) * 100;
+        criteriaAOA.push([criterion.parameter, `${criterion.operator}${formatNum(Number(criterion.criteria_value))}`, pct.toFixed(1) + "%"]);
       }
     });
     newSectionBlocks["Criteria Summary"] = criteriaAOA;
@@ -341,9 +417,9 @@ const CottonDistribution: React.FC<CottonDistributionProps> = ({ user, onBack })
     const loadCriteria = async () => {
       try {
         const response = await fetch(`${API_BASE_URL}/api/cotton/criteria`);
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-          throw new Error(result.error || "Request failed");
+        const result = await response.json().catch(() => null);
+        if (!response.ok || !result?.success) {
+          throw new Error(result?.error || `Backend request failed (HTTP ${response.status})`);
         }
 
         setCriteria((result.data || []).map((row: CottonCriterion) => ({
@@ -381,9 +457,9 @@ const CottonDistribution: React.FC<CottonDistributionProps> = ({ user, onBack })
           criteria: criteriaDraft.map(({ id, operator, criteria_value }) => ({ id, operator, criteria_value })),
         }),
       });
-      const result = await response.json();
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || "Request failed");
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || `Backend request failed (HTTP ${response.status})`);
       }
 
       setCriteria((result.data || []).map((row: CottonCriterion) => ({
@@ -411,20 +487,64 @@ const CottonDistribution: React.FC<CottonDistributionProps> = ({ user, onBack })
     else updater(new Set(all));
   };
 
-  const downloadExcel = () => {
+  const downloadExcel = async () => {
     if (activeView === "averages") {
       const averageAOA: any[][] = [
-        ["Lot No", ...averageResults.parameterColumns.map(({ name }) => name)],
-        ...averageResults.lots.map(({ lot, averages }) => [
+        ["Lot No", ...averageDisplayColumns.map(({ label }) => label)],
+        ...averageResults.lots.map(({ lot, averages, statistics }) => [
           lot,
-          ...averages.map((average: number | null) => average === null ? "N/A" : average.toFixed(2)),
+          ...formatAverageRow(averages, statistics),
         ]),
-        ["Overall Average", ...averageResults.overall.map((average) => average === null ? "N/A" : average.toFixed(2))],
+        ["Overall Average", ...formatAverageRow(averageResults.overall, averageResults.overallStatistics)],
+        ...overallStatisticRows.map(({ label, kind }) => [label, ...formatOverallStatisticRow(kind)]),
       ];
-      const ws = XLSX.utils.aoa_to_sheet(averageAOA);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Average Results");
-      XLSX.writeFile(wb, "Average_Results.xlsx");
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet("Average Results");
+      averageAOA.forEach((row) => ws.addRow(row));
+      ws.columns = [
+        { width: 22 },
+        ...averageDisplayColumns.map(() => ({ width: 14 })),
+      ];
+
+      let imageRow = averageAOA.length + 1;
+      for (const chart of metricChartConfigs) {
+        const chartElement = document.getElementById(chart.chartId);
+        if (!chartElement) continue;
+
+        const sourceCanvas = await html2canvas(chartElement, { backgroundColor: "#ffffff", scale: 1 });
+        const maxImageWidth = 700;
+        const imageWidth = Math.min(sourceCanvas.width, maxImageWidth);
+        const imageHeight = sourceCanvas.height * (imageWidth / sourceCanvas.width);
+        const resizedCanvas = document.createElement("canvas");
+        resizedCanvas.width = imageWidth;
+        resizedCanvas.height = imageHeight;
+        const context = resizedCanvas.getContext("2d");
+        if (!context) continue;
+        context.fillStyle = "#ffffff";
+        context.fillRect(0, 0, imageWidth, imageHeight);
+        context.drawImage(sourceCanvas, 0, 0, imageWidth, imageHeight);
+
+        const jpegData = resizedCanvas.toDataURL("image/jpeg", 0.55).split(",")[1];
+        const imageId = wb.addImage({ base64: jpegData, extension: "jpeg" });
+        ws.getCell(imageRow + 1, 1).value = chart.title;
+        ws.getCell(imageRow + 1, 1).font = { bold: true };
+        ws.addImage(imageId, {
+          tl: { col: 0, row: imageRow + 1 },
+          ext: { width: imageWidth, height: imageHeight },
+        });
+        imageRow += Math.ceil(imageHeight / 20) + 3;
+      }
+
+      const workbookBuffer = await wb.xlsx.writeBuffer();
+      const workbookBlob = new Blob([workbookBuffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const downloadUrl = URL.createObjectURL(workbookBlob);
+      const downloadLink = document.createElement("a");
+      downloadLink.href = downloadUrl;
+      downloadLink.download = "Average_Results.xlsx";
+      downloadLink.click();
+      URL.revokeObjectURL(downloadUrl);
       return;
     }
 
@@ -525,13 +645,14 @@ const CottonDistribution: React.FC<CottonDistributionProps> = ({ user, onBack })
     let currentPage = 1;
 
     if (activeView === "averages") {
-      const averageHead = [["Lot No", ...averageResults.parameterColumns.map(({ name }) => name)]];
+      const averageHead = [["Lot No", ...averageDisplayColumns.map(({ label }) => label)]];
       const averageBody = [
-        ...averageResults.lots.map(({ lot, averages }) => [
+        ...averageResults.lots.map(({ lot, averages, statistics }) => [
           lot,
-          ...averages.map((average: number | null) => average === null ? "N/A" : average.toFixed(2)),
+          ...formatAverageRow(averages, statistics),
         ]),
-        ["Overall Average", ...averageResults.overall.map((average) => average === null ? "N/A" : average.toFixed(2))],
+        ["Overall Average", ...formatAverageRow(averageResults.overall, averageResults.overallStatistics)],
+        ...overallStatisticRows.map(({ label, kind }) => [label, ...formatOverallStatisticRow(kind)]),
       ];
 
       autoTable(doc, {
@@ -545,9 +666,9 @@ const CottonDistribution: React.FC<CottonDistributionProps> = ({ user, onBack })
         didDrawPage: () => drawHeaderFooter(doc, doc.getNumberOfPages()),
         didParseCell: (cellData) => {
           const rawRow = cellData.row.raw as any[];
-          if (cellData.row.section === "body" && rawRow[0] === "Overall Average") {
+          if (cellData.row.section === "body" && String(rawRow[0]).startsWith("Overall ")) {
             cellData.cell.styles.fontStyle = "bold";
-            cellData.cell.styles.fillColor = [254, 242, 242];
+            cellData.cell.styles.fillColor = rawRow[0] === "Overall Average" ? [254, 242, 242] : [243, 244, 246];
           }
         },
       });
@@ -691,9 +812,9 @@ const CottonDistribution: React.FC<CottonDistributionProps> = ({ user, onBack })
   };
 
   const metricChartConfigs = [
-    { title: "MIC Value Distribution", axisLabel: "MIC Value", aliases: ["MIC", "MICRON"], color: "#dc2626", chartId: "cotton-mic-chart", filename: "MIC_Value_Distribution.png" },
-    { title: "+b Value Distribution", axisLabel: "+b Value", aliases: ["+B"], color: "#0f766e", chartId: "cotton-plus-b-chart", filename: "Plus_B_Value_Distribution.png" },
-  ].flatMap(({ title, axisLabel, aliases, color, chartId, filename }) => {
+    { title: "MIC Value Distribution", axisLabel: "MIC Value", aliases: ["MIC", "MICRON"], color: "#dc2626", chartId: "cotton-mic-chart", filename: "MIC_Value_Distribution.png", rangeWidth: 0.3, thresholdRanges: true },
+    { title: "+b Value Distribution", axisLabel: "+b Value", aliases: ["+B"], color: "#0f766e", chartId: "cotton-plus-b-chart", filename: "Plus_B_Value_Distribution.png", rangeWidth: 0.5, tickAngle: -45 },
+  ].flatMap(({ title, axisLabel, aliases, color, chartId, filename, rangeWidth, thresholdRanges = false, tickAngle = 0 }) => {
     const columnIndex = header.findIndex((name) => aliases.includes(String(name).trim().toUpperCase()));
     if (columnIndex === -1) return [];
     const countByValue = new Map<number, number>();
@@ -704,9 +825,53 @@ const CottonDistribution: React.FC<CottonDistributionProps> = ({ user, onBack })
       const value = roundTo(rawValue, 2);
       countByValue.set(value, (countByValue.get(value) || 0) + 1);
     });
-    const data = Array.from(countByValue, ([value, count]) => ({ value, count }))
-      .sort((left, right) => left.value - right.value);
-    return data.length ? [{ title, axisLabel, color, chartId, filename, data }] : [];
+    const values = Array.from(countByValue.keys()).sort((left, right) => left - right);
+    let data: Array<{ value: string | number; count: number }>;
+    if (rangeWidth !== undefined && values.length > 0) {
+      const min = values[0];
+      const max = values[values.length - 1];
+      const bins: Array<{ lower: number; upper: number; count: number }> = [];
+      if (thresholdRanges) {
+        const addIntervals = (start: number, end: number, width: number) => {
+          for (let lower = start; lower < end - 1e-8; lower = roundTo(lower + width, 8)) {
+            bins.push({ lower, upper: Math.min(roundTo(lower + width, 8), end), count: 0 });
+          }
+        };
+
+        if (min < 4) addIntervals(Math.floor(min * 10 + 1e-8) / 10, 4, 0.1);
+        addIntervals(4, 5, 0.3);
+        if (max >= 5) {
+          for (let lower = 5; lower <= max + 1e-8; lower = roundTo(lower + 0.2, 8)) {
+            bins.push({ lower, upper: roundTo(lower + 0.2, 8), count: 0 });
+          }
+        }
+      } else if (min === max) {
+        bins.push({ lower: min, upper: max, count: 0 });
+      } else {
+        for (let lower = min; lower < max; lower = roundTo(lower + rangeWidth, 8)) {
+          bins.push({ lower, upper: Math.min(roundTo(lower + rangeWidth, 8), max), count: 0 });
+        }
+      }
+
+      countByValue.forEach((count, value) => {
+        const binIndex = bins.findIndex((bin, index) =>
+          value >= bin.lower && (value < bin.upper || (index === bins.length - 1 && value <= bin.upper))
+        );
+        if (binIndex >= 0) bins[binIndex].count += count;
+      });
+
+      data = bins
+        .filter(({ count }) => count > 0)
+        .map(({ lower, upper, count }) => ({
+          value: thresholdRanges
+            ? `${lower.toFixed(2)} - ${Math.max(lower, upper - 0.01).toFixed(2)}`
+            : `${lower.toFixed(1)} - ${upper.toFixed(1)}`,
+          count,
+        }));
+    } else {
+      data = Array.from(countByValue, ([value, count]) => ({ value, count }));
+    }
+    return data.length ? [{ title, axisLabel, color, chartId, filename, tickAngle, data }] : [];
   });
 
   return (
@@ -956,37 +1121,63 @@ const CottonDistribution: React.FC<CottonDistributionProps> = ({ user, onBack })
       {rows.length > 0 && activeView === "averages" && (
         <div className="space-y-6">
           <div className="overflow-x-auto rounded border border-gray-200 bg-white shadow-sm">
-            <table className="w-full text-sm">
+            <table className="w-full border-collapse text-sm">
               <thead>
                 <tr className="bg-gray-100 text-left text-gray-700">
-                  <th className="border-b border-r px-3 py-2">Lot No</th>
-                  {averageResults.parameterColumns.map(({ name, index }) => (
-                    <th key={`${name}-${index}`} className="border-b border-r px-3 py-2 text-right last:border-r-0">{name}</th>
+                  <th className="whitespace-nowrap border border-gray-300 px-3 py-2">Lot No</th>
+                  {averageDisplayColumns.map(({ label, parameterIndex, kind }) => (
+                    <th key={`${parameterIndex}-${kind}`} className="border border-gray-300 px-3 py-2 text-right">{label}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {averageResults.lots.map(({ lot, averages }) => (
+                {averageResults.lots.map(({ lot, averages, statistics }) => (
                   <tr key={lot} className="hover:bg-gray-50">
-                    <td className="border-b border-r px-3 py-2 font-medium">{lot}</td>
-                    {averages.map((average: number | null, index: number) => (
-                      <td key={index} className="border-b border-r px-3 py-2 text-right last:border-r-0">
-                        {average === null ? "N/A" : average.toFixed(2)}
+                    <td className="whitespace-nowrap border border-gray-300 px-3 py-2 font-medium">{lot}</td>
+                    {formatAverageRow(averages, statistics).map((value, index) => {
+                      const column = averageDisplayColumns[index];
+                      const cv = column.kind === "cv" ? statistics[column.parameterIndex]?.cv : null;
+                      const isHighlighted = column.highlightAbove !== undefined && cv !== null && cv > column.highlightAbove;
+                      return (
+                        <td
+                          key={index}
+                          className={`border border-gray-300 px-3 py-2 text-right ${isHighlighted ? "bg-yellow-200 font-bold text-red-700" : ""}`}
+                        >
+                          {value}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+                <tr className="bg-red-50 font-bold">
+                  <td className="whitespace-nowrap border border-gray-300 px-3 py-2">Overall Average</td>
+                  {formatAverageRow(averageResults.overall, averageResults.overallStatistics).map((value, index) => {
+                    const column = averageDisplayColumns[index];
+                    const cv = column.kind === "cv" ? averageResults.overallStatistics[column.parameterIndex]?.cv : null;
+                    const isHighlighted = column.highlightAbove !== undefined && cv !== null && cv > column.highlightAbove;
+                    return (
+                      <td
+                        key={index}
+                        className={`border border-gray-300 px-3 py-2 text-right ${isHighlighted ? "bg-yellow-200 font-bold text-red-700" : ""}`}
+                      >
+                        {value}
+                      </td>
+                    );
+                  })}
+                </tr>
+                {overallStatisticRows.map(({ label, kind }) => (
+                  <tr key={label} className="bg-gray-50 font-semibold">
+                    <td className="whitespace-nowrap border border-gray-300 px-3 py-2">{label}</td>
+                    {formatOverallStatisticRow(kind).map((value, index) => (
+                      <td key={index} className="border border-gray-300 px-3 py-2 text-right">
+                        {value}
                       </td>
                     ))}
                   </tr>
                 ))}
-                <tr className="bg-red-50 font-bold">
-                  <td className="border-r px-3 py-2">Overall Average</td>
-                  {averageResults.overall.map((average, index) => (
-                    <td key={index} className="border-r px-3 py-2 text-right last:border-r-0">
-                      {average === null ? "N/A" : average.toFixed(2)}
-                    </td>
-                  ))}
-                </tr>
                 {averageResults.parameterColumns.length === 0 && (
                   <tr>
-                    <td colSpan={1} className="px-3 py-4 text-center text-gray-500">No numeric parameters in the selected data.</td>
+                    <td colSpan={averageDisplayColumns.length + 1} className="border border-gray-300 px-3 py-4 text-center text-gray-500">No numeric parameters in the selected data.</td>
                   </tr>
                 )}
               </tbody>
@@ -995,7 +1186,7 @@ const CottonDistribution: React.FC<CottonDistributionProps> = ({ user, onBack })
 
           {metricChartConfigs.length > 0 && (
             <div className="grid grid-cols-1 gap-6">
-              {metricChartConfigs.map(({ title, axisLabel, color, data, chartId, filename }) => (
+              {metricChartConfigs.map(({ title, axisLabel, color, data, chartId, filename, tickAngle }) => (
                 <section key={title} className="rounded border border-gray-200 bg-white p-4 shadow-sm">
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <h2 className="text-sm font-bold text-gray-700">{title}</h2>
@@ -1011,28 +1202,32 @@ const CottonDistribution: React.FC<CottonDistributionProps> = ({ user, onBack })
                   </div>
                   <div id={chartId} className="h-96 w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={data} margin={{ top: 8, right: 12, bottom: 28, left: 8 }}>
+                      <BarChart data={data} margin={{ top: 32, right: 20, bottom: 20, left: 8 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                         <XAxis
                           dataKey="value"
                           type="category"
-                          interval="preserveStartEnd"
-                          angle={-35}
-                          textAnchor="end"
-                          height={65}
-                          tickFormatter={(value: number) => value.toFixed(2)}
-                          label={{ value: axisLabel, position: "insideBottom", offset: -15 }}
+                          interval={tickAngle === 0 ? "preserveStartEnd" : 0}
+                          angle={tickAngle}
+                          textAnchor={tickAngle === 0 ? "middle" : "end"}
+                          height={tickAngle === 0 ? 75 : 105}
+                          tickMargin={10}
+                          tick={{ fontSize: 11, fontWeight: 700 }}
+                          tickFormatter={(value: string | number) => typeof value === "number" ? value.toFixed(2) : value}
+                          label={{ value: axisLabel, position: "insideBottom", offset: -5, style: { fontWeight: 700 } }}
                         />
                         <YAxis
                           allowDecimals={false}
-                          label={{ value: "No. of Bales", angle: -90, position: "insideLeft" }}
+                          domain={[0, (dataMax: number) => dataMax + Math.max(2, dataMax * 0.12)]}
+                          tick={{ fontWeight: 700 }}
+                          label={{ value: "No. of Bales", angle: -90, position: "insideLeft", style: { fontWeight: 700 } }}
                         />
                         <Tooltip
-                          labelFormatter={(value) => `${axisLabel}: ${Number(value).toFixed(2)}`}
+                          labelFormatter={(value) => `${axisLabel}: ${typeof value === "number" ? value.toFixed(2) : value}`}
                           formatter={(value) => [Number(value), "No. of Bales"]}
                         />
                         <Bar dataKey="count" fill={color} name="No. of Bales" radius={[3, 3, 0, 0]}>
-                          <LabelList dataKey="count" position="top" />
+                          <LabelList dataKey="count" position="top" offset={8} fill="#374151" fontSize={12} fontWeight="bold" />
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
